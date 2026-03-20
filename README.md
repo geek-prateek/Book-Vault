@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📚 Book Vault
 
-## Getting Started
+> A Next.js app for tracking your reading with focus mode, stats, and one active book at a time.
 
-First, run the development server:
+---
+
+## 🚀 Overview
+
+**Book Vault** is a personal reading tracker designed for deep focus.  
+It enforces a **single active book at a time**, helping you eliminate context switching and build a consistent reading habit.
+
+---
+
+## ✨ Features
+
+### 🔍 Discover & Add Books
+- Search books using **Google Books API**
+- Auto-fetch metadata, covers, and descriptions
+
+### 🎯 Focus Mode
+- Only **one active book** at a time
+- Track reading progress (pages, completion)
+
+### 📚 Library Management
+- **To-Read (Waiting List)**
+- **Currently Reading**
+- **Completed Books**
+
+### 📊 Analytics & Insights
+- Total books completed
+- Total pages read
+- Yearly reading goal
+- Average reading pace
+- Top categories
+
+### 🔁 Re-Reads
+- Track multiple reads of the same book
+- Maintain reading history per title
+
+### 🎲 Randomizer
+- Pick a random book from your waiting list
+
+### 📝 Notes
+- Add personal notes per book while reading
+
+### 🏷 Categories
+- Organize books by category:
+  - Tech
+  - Self-Help
+  - Fiction
+  - Business
+  - Health
+  - and more...
+
+### 📎 Optional PDF Links
+- Attach links to your own book copies
+
+---
+
+## 🏗 Tech Stack
+
+| Layer       | Technology |
+|------------|-----------|
+| Frontend   | Next.js 16, React 19, TypeScript |
+| Styling    | Tailwind CSS 4 |
+| Backend    | Supabase (PostgreSQL) |
+| Auth       | Supabase Auth (Google OAuth + Magic Links) |
+| API        | Google Books API |
+
+---
+
+## 🔐 Authentication
+
+- Google OAuth
+- Email Magic Links (passwordless login)
+
+---
+
+## 🧠 Core Philosophy
+
+> Focus beats volume.
+
+Book Vault is built around the idea that **reading one book at a time leads to higher retention, deeper understanding, and better consistency**.
+
+---
+
+## 📦 Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/book-vault.git
+
+# Navigate into the project
+cd book-vault
+
+# Install dependencies
+npm install
+
+# Run development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
