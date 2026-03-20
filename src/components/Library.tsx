@@ -13,11 +13,11 @@ export default async function Library() {
     const categories = Array.from(new Set(toRead.map(b => b.category).filter(Boolean)));
   
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 overflow-hidden">
         {/* SECTION: TO READ */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-blue-400">The Waiting List</h3>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h3 className="text-lg sm:text-xl font-semibold text-blue-400">The Waiting List</h3>
             <RandomizerButton bookIds={toRead.map(b => b.id)} />
           </div>
           {toRead.length === 0 ? (
@@ -25,14 +25,14 @@ export default async function Library() {
           ) : (
             <div className="grid gap-3 md:gap-4">
               {toRead.map(book => (
-                 <div key={book.id} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between p-3 md:p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition gap-3">
-                    <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                 <div key={book.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-gray-900 border border-gray-800 rounded-xl hover:border-gray-700 transition gap-3 overflow-hidden min-w-0">
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
                       <img 
                         src={book.cover_url || '/placeholder-book.png'} 
                         alt={book.title}
                         className="w-10 h-14 md:w-12 md:h-16 object-cover rounded flex-shrink-0" 
                       />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         {book.category && (
                           <span className="text-[10px] text-blue-400 uppercase font-bold tracking-widest block mb-1">
                             {book.category}
@@ -44,7 +44,7 @@ export default async function Library() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 justify-end sm:justify-start">
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                         <ReadingButton bookId={book.id} currentStatus={book.status} />
                         <DeleteButton bookId={book.id} />
                     </div>
@@ -55,8 +55,8 @@ export default async function Library() {
         </div>
 
         {/* SECTION: FINISHED */}
-        <div>
-          <h3 className="text-xl font-semibold mb-4 text-green-400">Completed Books</h3>
+        <div className="min-w-0">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4 text-green-400">Completed Books</h3>
           {finished.length === 0 ? (
             <p className="text-gray-500 text-sm italic">No completed books yet.</p>
           ) : (

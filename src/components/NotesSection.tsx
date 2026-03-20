@@ -5,9 +5,16 @@ import { updateNotes } from '@/lib/actions';
 import toast from 'react-hot-toast';
 
 export default function NotesSection({ bookId, initialNotes }: { bookId: string; initialNotes?: string }) {
+  const [prevBookId, setPrevBookId] = useState(bookId);
   const [notes, setNotes] = useState(initialNotes || "");
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset notes when focused book changes (React "adjusting state when props change" pattern)
+  if (bookId !== prevBookId) {
+    setPrevBookId(bookId);
+    setNotes(initialNotes || "");
+  }
 
   // Auto-save after 1 second of no typing
   useEffect(() => {
@@ -59,7 +66,7 @@ export default function NotesSection({ bookId, initialNotes }: { bookId: string;
   };
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 min-w-0">
       <div className="flex justify-between items-center mb-2">
         <label className="text-sm font-semibold text-blue-300">Active Reading Notes</label>
         <div className="flex items-center gap-2">

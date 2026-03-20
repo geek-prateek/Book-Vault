@@ -36,9 +36,14 @@ export default function ReadingButton({ bookId, currentStatus }: any) {
     <button 
       onClick={handleStartReading}
       disabled={isUpdating}
-      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+      className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
     >
-      {isUpdating ? 'Starting...' : 'Start Reading'}
+      {isUpdating ? 'Starting...' : (
+        <>
+          <span className="sm:hidden">Start</span>
+          <span className="hidden sm:inline">Start Reading</span>
+        </>
+      )}
     </button>
   );
 }

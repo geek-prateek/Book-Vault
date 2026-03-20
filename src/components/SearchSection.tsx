@@ -107,7 +107,7 @@ export default function SearchSection() {
         </form>
         
         {results.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-hidden">
             {results.map((book) => {
               const bookStatus = bookStatuses[book.google_id];
               const exists = bookStatus?.exists;
@@ -115,14 +115,14 @@ export default function SearchSection() {
               const showSaveButton = !exists || status === 'finished';
               
               return (
-                <div key={book.google_id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl">
-                  <div className="flex gap-4">
+                <div key={book.google_id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden min-w-0">
+                  <div className="flex gap-4 min-w-0">
                     <img 
                       src={book.cover_url || '/placeholder-book.png'} 
                       alt={book.title}
-                      className="w-16 h-24 object-cover rounded"
+                      className="w-16 h-24 object-cover rounded flex-shrink-0"
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <h3 className="font-bold text-white text-sm md:text-base truncate">{book.title}</h3>
                       <p className="text-xs md:text-sm text-gray-400 truncate">{book.author}</p>
                       {book.total_pages && book.total_pages > 0 ? (

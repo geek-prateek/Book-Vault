@@ -18,15 +18,15 @@ export default async function FocusDesk() {
     : 0;
 
   return (
-    <div className="mb-12 p-4 md:p-8 bg-blue-900/20 border border-blue-500/30 rounded-3xl">
-      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center">
+    <div className="mb-12 p-4 md:p-8 bg-blue-900/20 border border-blue-500/30 rounded-2xl md:rounded-3xl overflow-hidden">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center min-w-0">
         <img 
           src={currentRead.cover_url || '/placeholder-book.png'} 
           alt={currentRead.title}
           className="w-24 h-36 md:w-32 md:h-48 object-cover rounded-lg shadow-2xl flex-shrink-0 mx-auto md:mx-0" 
         />
-        <div className="flex-1 w-full">
-          <h3 className="text-xl md:text-2xl font-bold text-white mb-4">{currentRead.title}</h3>
+        <div className="flex-1 w-full min-w-0">
+          <h3 className="text-lg md:text-2xl font-bold text-white mb-4 break-words hyphens-auto">{currentRead.title}</h3>
           
           {/* Show total pages input if not set */}
           {!hasTotalPages && (
@@ -55,7 +55,7 @@ export default async function FocusDesk() {
           )}
   
           {/* Input to update progress */}
-          <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-wrap">
             <ProgressInput 
               bookId={currentRead.id} 
               currentPage={currentRead.current_page}
@@ -65,7 +65,7 @@ export default async function FocusDesk() {
           </div>
         </div>
       </div>
-      <NotesSection bookId={currentRead.id} initialNotes={currentRead.notes} />
+      <NotesSection key={currentRead.id} bookId={currentRead.id} initialNotes={currentRead.notes} />
     </div>
   );
 }

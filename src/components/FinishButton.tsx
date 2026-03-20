@@ -22,9 +22,14 @@ export default function FinishButton({ bookId }: { bookId: string }) {
     <button 
       onClick={handleFinish}
       disabled={isFinishing}
-      className="border border-green-600 text-green-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-green-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+      className="border border-green-600 text-green-600 px-4 py-2 rounded-full text-xs sm:text-sm font-bold hover:bg-green-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shrink-0"
     >
-      {isFinishing ? 'Finishing...' : 'Done Reading!'}
+      {isFinishing ? 'Finishing...' : (
+        <>
+          <span className="sm:hidden">Done!</span>
+          <span className="hidden sm:inline">Done Reading!</span>
+        </>
+      )}
     </button>
   );
 }
