@@ -18,15 +18,23 @@ export default async function Home() {
     <main className="max-w-6xl mx-auto p-3 md:p-4 lg:p-8 min-h-screen w-full min-w-0">
       <header className="mb-8 md:mb-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 md:mb-8">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white">Book Vault</h1>
-          <form action="/auth/signout" method="post">
-            <button 
-              type="submit"
-              className="text-xs md:text-sm text-gray-400 hover:text-white transition-colors px-3 py-1 rounded hover:bg-gray-900"
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white italic tracking-tighter">Readaly</h1>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a 
+              href="/profile/edit"
+              className="text-xs md:text-sm text-blue-400 hover:text-blue-300 font-medium transition-colors px-3 py-1.5 rounded-lg border border-blue-900 hover:bg-blue-900/30 whitespace-nowrap"
             >
-              Sign Out
-            </button>
-          </form>
+              Public Profile
+            </a>
+            <form action="/auth/signout" method="post">
+              <button 
+                type="submit"
+                className="text-xs md:text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded hover:bg-gray-900 whitespace-nowrap"
+              >
+                Sign Out
+              </button>
+            </form>
+          </div>
         </div>
         <SearchSection />
         <Suspense fallback={<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8 md:mb-12"><div className="h-24 md:h-32 bg-gray-900 animate-pulse rounded-2xl"></div></div>}>

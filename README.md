@@ -1,4 +1,4 @@
-# 📚 Book Vault
+# 📚 Readaly
 
 > A Next.js app for tracking your reading with focus mode, stats, and one active book at a time.
 
@@ -6,7 +6,7 @@
 
 ## 🚀 Overview
 
-**Book Vault** is a personal reading tracker designed for deep focus.  
+**Readaly** is a personal reading tracker designed for deep focus.  
 It enforces a **single active book at a time**, helping you eliminate context switching and build a consistent reading habit.
 
 ---
@@ -80,7 +80,7 @@ It enforces a **single active book at a time**, helping you eliminate context sw
 
 > Focus beats volume.
 
-Book Vault is built around the idea that **reading one book at a time leads to higher retention, deeper understanding, and better consistency**.
+Readaly is built around the idea that **reading one book at a time leads to higher retention, deeper understanding, and better consistency**.
 
 ---
 
@@ -88,10 +88,10 @@ Book Vault is built around the idea that **reading one book at a time leads to h
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/book-vault.git
+git clone https://github.com/your-username/readaly.git
 
 # Navigate into the project
-cd book-vault
+cd readaly
 
 # Install dependencies
 npm install

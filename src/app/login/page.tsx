@@ -49,7 +49,7 @@ export default function LoginPage() {
       <Toaster />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold mb-2">Book Vault</h1>
+          <h1 className="text-4xl font-bold mb-2 italic tracking-tighter">Readaly</h1>
           <p className="text-gray-400">Focus-driven personal library</p>
         </div>
 

@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { searchGoogleBooks } from '@/lib/books';
-import { saveBookToVault, checkBookExists } from '@/lib/actions';
+import { saveBookToVault, checkBookExists, checkMultipleBooksExist } from '@/lib/actions';
 import toast from 'react-hot-toast';
 
 interface BookResult {
@@ -16,6 +16,7 @@ interface BookResult {
 export default function SearchSection() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   // Per-book category selection - each book has its own category
   const [bookCategories, setBookCategories] = useState<Record<string, string>>({});
   const [bookStatuses, setBookStatuses] = useState<Record<string, { exists: boolean; status: string | null }>>({});
@@ -24,25 +25,35 @@ export default function SearchSection() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || isSearching) return;
     
-    const books = await searchGoogleBooks(query);
-    setResults(books);
-    
-    // Initialize categories for each book (default to 'Uncategorized')
-    const initialCategories: Record<string, string> = {};
-    books.forEach((book: BookResult) => {
-      initialCategories[book.google_id] = 'Uncategorized';
-    });
-    setBookCategories(initialCategories);
-    
-    // Check which books already exist in the library
-    const statusMap: Record<string, { exists: boolean; status: string | null }> = {};
-    for (const book of books) {
-      const check = await checkBookExists(book.google_id, book.title, book.author);
-      statusMap[book.google_id] = check;
+    setIsSearching(true);
+    try {
+      const books = await searchGoogleBooks(query);
+      setResults(books);
+      
+      // Initialize categories for each book (default to 'Uncategorized')
+      const initialCategories: Record<string, string> = {};
+      books.forEach((book: BookResult) => {
+        initialCategories[book.google_id] = 'Uncategorized';
+      });
+      setBookCategories(initialCategories);
+      
+      // Check which books already exist in the library
+      const statusMap: Record<string, { exists: boolean; status: string | null }> = {};
+      const minimalBooks = books.map((b: BookResult) => ({ google_id: b.google_id, title: b.title, author: b.author }));
+      const checks = await checkMultipleBooksExist(minimalBooks);
+      
+      books.forEach((book: BookResult, idx: number) => {
+        statusMap[book.google_id] = checks[idx];
+      });
+      setBookStatuses(statusMap);
+    } catch (error) {
+      console.error("Search failed:", error);
+      toast.error("Failed to search for books");
+    } finally {
+      setIsSearching(false);
     }
-    setBookStatuses(statusMap);
   };
 
   const handleSave = async (book: BookResult, pdfUrl: string, category: string, totalPages?: number) => {
@@ -81,7 +92,7 @@ export default function SearchSection() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for books..."
-              className="w-full p-2 md:p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 pr-10 text-sm md:text-base"
+              className="w-full p-3 bg-gray-950 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/30 pr-10 text-sm md:text-base transition-all"
             />
             {query && (
               <button 
@@ -100,9 +111,18 @@ export default function SearchSection() {
           </div>
           <button 
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg text-sm md:text-base font-medium transition-colors whitespace-nowrap"
+            disabled={isSearching}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-[0.3em] px-8 py-3 rounded-lg transition-all whitespace-nowrap min-w-[120px] flex items-center justify-center disabled:opacity-50"
           >
-            Search
+            {isSearching ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </span>
+            ) : "Search"}
           </button>
         </form>
         
@@ -115,7 +135,7 @@ export default function SearchSection() {
               const showSaveButton = !exists || status === 'finished';
               
               return (
-                <div key={book.google_id} className="p-4 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden min-w-0">
+                <div key={book.google_id} className="p-6 bg-black border border-gray-800 rounded-2xl transition-all hover:border-emerald-500/20">
                   <div className="flex gap-4 min-w-0">
                     <img 
                       src={book.cover_url || '/placeholder-book.png'} 
@@ -126,46 +146,52 @@ export default function SearchSection() {
                       <h3 className="font-bold text-white text-sm md:text-base truncate">{book.title}</h3>
                       <p className="text-xs md:text-sm text-gray-400 truncate">{book.author}</p>
                       {book.total_pages && book.total_pages > 0 ? (
-                        <p className="text-xs text-gray-500 mt-1">{book.total_pages} pages</p>
+                        <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest mt-2">{book.total_pages} pages</p>
                       ) : (
-                        <div className="mt-2">
-                          <label className="text-xs text-gray-400 block mb-1">Total Pages:</label>
+                        <div className="mt-4">
+                          <label className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block mb-2">Total Pages:</label>
                           <input 
                             type="number" 
                             placeholder="Enter total pages"
                             min="0"
-                            className="w-full p-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            className="w-full p-2.5 text-xs bg-gray-950 border border-gray-800 rounded text-white placeholder-gray-700 focus:outline-none focus:border-emerald-500/30 transition-all font-mono"
                             id={`total-pages-${book.google_id}`}
                           />
                         </div>
                       )}
                       
-                      <input 
-                        type="text" 
-                        placeholder="Paste PDF link here (optional)"
-                        className="w-full mt-3 p-2 text-sm bg-gray-800 border border-gray-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                        id={`link-${book.google_id}`}
-                      />
+                      <div className="mt-4">
+                        <label className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block mb-2">PDF Access (Optional):</label>
+                        <input 
+                          type="text" 
+                          placeholder="Paste URL..."
+                          className="w-full p-2.5 text-xs bg-gray-950 border border-gray-800 rounded text-white placeholder-gray-700 focus:outline-none focus:border-emerald-500/30 transition-all"
+                          id={`link-${book.google_id}`}
+                        />
+                      </div>
 
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3">
-                        <select 
-                          value={bookCategories[book.google_id] || 'Uncategorized'}
-                          onChange={(e) => {
-                            setBookCategories(prev => ({
-                              ...prev,
-                              [book.google_id]: e.target.value
-                            }));
-                          }}
-                          className="bg-gray-800 text-white text-sm p-2 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 flex-shrink-0"
-                        >
-                          {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[9px] font-bold text-gray-600 uppercase tracking-widest block">Collection</label>
+                          <select 
+                            value={bookCategories[book.google_id] || 'Uncategorized'}
+                            onChange={(e) => {
+                              setBookCategories(prev => ({
+                                ...prev,
+                                [book.google_id]: e.target.value
+                              }));
+                            }}
+                            className="bg-gray-950 text-white text-[10px] font-bold uppercase tracking-widest p-2.5 rounded border border-gray-800 focus:outline-none focus:border-emerald-500/30"
+                          >
+                            {categories.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
                         
                         {showSaveButton ? (
                           <button 
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-[0.2em] px-6 py-3 rounded transition-all whitespace-nowrap self-end"
                             onClick={async () => {
                               const linkInput = document.getElementById(`link-${book.google_id}`) as HTMLInputElement;
                               const totalPagesInput = document.getElementById(`total-pages-${book.google_id}`) as HTMLInputElement;
@@ -174,11 +200,11 @@ export default function SearchSection() {
                               await handleSave(book, linkInput?.value || '', category, totalPages);
                             }}
                           >
-                            {status === 'finished' ? 'Add for Re-read' : 'Save to Vault'}
+                            {status === 'finished' ? 'Re-read' : 'Devour'}
                           </button>
                         ) : (
-                          <span className="text-sm text-gray-400 italic text-center sm:text-left">
-                            {status === 'reading' ? 'Currently reading' : 'Already in library'}
+                          <span className="text-[10px] text-gray-700 font-bold uppercase tracking-widest italic text-center sm:text-right self-end mb-2">
+                            {status === 'reading' ? 'Devouring...' : 'In Library'}
                           </span>
                         )}
                       </div>

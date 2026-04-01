@@ -31,12 +31,20 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user;
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    // Suppress AuthApiError: Invalid Refresh Token thrown by the Supabase client
+    user = null
+  }
+
+  // Allow public access to /profile/[username] but still protect /profile/edit
+  const isPublicProfile = request.nextUrl.pathname.startsWith('/profile/') && !request.nextUrl.pathname.startsWith('/profile/edit')
 
   // Protect routes - redirect to login if not authenticated
-  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth') && !isPublicProfile) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

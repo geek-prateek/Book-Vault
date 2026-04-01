@@ -3,56 +3,88 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from './supabase-server';
 
-export async function checkBookExists(googleId?: string, title?: string, author?: string) {
+// Generic helper to get authenticated user and client
+async function getAuthContext() {
   const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { exists: false, status: null };
-  }
+  const { data: { user }, error } = await supabase.auth.getUser();
+  return { supabase, user: error ? null : user };
+}
 
-  let existingBook: { id: string; status: string; times_read: number } | null = null;
+// Generic helper for standard user-bound table updates
+async function performUpdate(id: string, updateData: Record<string, any>, extraResponse: Record<string, any> = {}) {
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from('books')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath('/');
+  return { success: true, ...extraResponse };
+}
+
+export async function checkBookExists(googleId?: string, title?: string, author?: string) {
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { exists: false, status: null };
 
   if (googleId) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('books')
       .select('id, status, times_read')
       .eq('user_id', user.id)
       .eq('google_id', googleId)
-      .limit(1)
       .maybeSingle();
-    
-    // If error is not "not found", log it but continue
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error checking book by google_id:', error);
-    }
-    
-    existingBook = data;
+
+    if (data) return { exists: true, status: data.status, id: data.id };
   }
 
-  if (!existingBook && title && author) {
-    const { data, error } = await supabase
+  if (title && author) {
+    const { data } = await supabase
       .from('books')
       .select('id, status, times_read')
       .eq('user_id', user.id)
       .eq('title', title)
       .eq('author', author)
-      .limit(1)
       .maybeSingle();
-    
-    // If error is not "not found", log it but continue
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error checking book by title/author:', error);
-    }
-    
-    existingBook = data;
+
+    if (data) return { exists: true, status: data.status, id: data.id };
   }
 
-  return {
-    exists: !!existingBook,
-    status: existingBook?.status || null,
-    id: existingBook?.id || null
-  };
+  return { exists: false, status: null, id: null };
+}
+
+export async function checkMultipleBooksExist(books: Array<{ google_id?: string; title?: string; author?: string }>) {
+  const { supabase, user } = await getAuthContext();
+  if (!user) return books.map(() => ({ exists: false, status: null }));
+
+  const googleIds = books.map(b => b.google_id).filter(Boolean) as string[];
+  let existingBooks: Array<{ status: string; times_read: number; google_id?: string; title?: string; author?: string }> = [];
+
+  if (googleIds.length > 0) {
+    const { data } = await supabase
+      .from('books')
+      .select('status, times_read, google_id, title, author')
+      .eq('user_id', user.id)
+      .in('google_id', googleIds);
+
+    if (data) existingBooks = data;
+  }
+
+  return books.map(book => {
+    let match = book.google_id ? existingBooks.find(eb => eb.google_id === book.google_id) : undefined;
+    if (!match && book.title && book.author) {
+      match = existingBooks.find(eb => eb.title === book.title && eb.author === book.author);
+    }
+
+    return {
+      exists: !!match,
+      status: match?.status || null
+    };
+  });
 }
 
 interface BookData {
@@ -65,83 +97,51 @@ interface BookData {
   total_pages?: number;
 }
 
-export async function saveBookToVault(book: BookData) {
-  const supabase = await createClient();
-  
-  // Get authenticated user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
+export async function saveBookToVault(book: BookData): Promise<{ success: boolean; error?: string; reRead?: boolean }> {
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { success: false, error: "Not authenticated" };
 
-  // Check for duplicates: existing book with same google_id or title+author for this user
-  let existingBooks: Array<{ id: string; status: string; times_read: number; google_id?: string }> = [];
-  
+  let existingBook: { id: string; status: string; times_read: number; google_id?: string } | null = null;
+
   if (book.google_id) {
-    const { data: byGoogleId, error: googleIdError } = await supabase
+    const { data } = await supabase
       .from('books')
       .select('id, status, times_read, google_id')
       .eq('user_id', user.id)
       .eq('google_id', book.google_id)
-      .limit(1);
-    
-    // If column doesn't exist, the error will be caught, but we'll fall back to title/author check
-    if (googleIdError) {
-      console.warn('google_id column may not exist, falling back to title/author check:', googleIdError.message);
-    } else if (byGoogleId && byGoogleId.length > 0) {
-      existingBooks = byGoogleId;
-    }
+      .maybeSingle();
+
+    existingBook = data;
   }
-  
-  // Also check by title + author if no google_id match or if google_id column doesn't exist
-  if (existingBooks.length === 0) {
-    const { data: byTitleAuthor, error: titleAuthorError } = await supabase
+
+  if (!existingBook && book.title && book.author) {
+    const { data } = await supabase
       .from('books')
       .select('id, status, times_read')
       .eq('user_id', user.id)
       .eq('title', book.title)
       .eq('author', book.author)
-      .limit(1);
-    
-    if (titleAuthorError) {
-      console.error('Error checking book by title/author:', titleAuthorError);
-    } else if (byTitleAuthor && byTitleAuthor.length > 0) {
-      existingBooks = byTitleAuthor;
-    }
+      .maybeSingle();
+
+    existingBook = data;
   }
 
-  if (existingBooks && existingBooks.length > 0) {
-    const existing = existingBooks[0];
-    
-    // If book exists in 'to-read' or 'reading', don't allow duplicate
-    if (existing.status === 'to-read' || existing.status === 'reading') {
+  if (existingBook) {
+    if (existingBook.status === 'to-read' || existingBook.status === 'reading') {
       return { success: false, error: "Book already in your library" };
     }
-    
-    // If book exists in 'finished', increment times_read and reset to 'to-read'
-    if (existing.status === 'finished') {
-      const { error } = await supabase
-        .from('books')
-        .update({
-          times_read: (existing.times_read || 1) + 1,
-          status: 'to-read',
-          current_page: 0,
-          started_at: null,
-          completed_at: null
-        })
-        .eq('id', existing.id)
-        .eq('user_id', user.id);
-      
-      if (error) {
-        return { success: false, error: error.message };
-      }
-      revalidatePath('/');
-      return { success: true, reRead: true };
+
+    if (existingBook.status === 'finished') {
+      return performUpdate(existingBook.id, {
+        times_read: (existingBook.times_read || 1) + 1,
+        status: 'to-read',
+        current_page: 0,
+        started_at: null,
+        completed_at: null
+      }, { reRead: true });
     }
   }
 
-  // Insert new book
-  // Only include google_id if it exists (to avoid errors if column doesn't exist yet)
   const insertData: Record<string, unknown> = {
     title: book.title,
     author: book.author,
@@ -152,183 +152,99 @@ export async function saveBookToVault(book: BookData) {
     status: 'to-read',
     current_page: 0,
     times_read: 1,
-    total_pages: book.total_pages || 0
+    total_pages: book.total_pages || 0,
+    hidden_from_profile: false
   };
-  
-  // Only add google_id if it's provided (and column exists)
+
   if (book.google_id) {
     insertData.google_id = book.google_id;
   }
-  
-  const { error } = await supabase
-    .from('books')
-    .insert([insertData]);
-  
-  if (error) {
-    return { success: false, error: error.message };
-  }
-  
+
+  const { error } = await supabase.from('books').insert([insertData]);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath('/');
   return { success: true };
 }
 
 export async function updateBookStatus(id: string, status: string) {
-  const supabase = await createClient();
-  
-  // Get authenticated user
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { success: false, error: "Not authenticated" };
 
-  const updateData: { status: string; started_at?: string; completed_at?: string } = { status };
-  
+  const updateData: { status: string; started_at?: string; completed_at?: string; hidden_from_profile?: boolean } = { status };
+
   if (status === 'reading') {
     updateData.started_at = new Date().toISOString();
-    
+
     // CRITICAL: Move any other book with status 'reading' for THIS USER back to 'to-read'
     await supabase
       .from('books')
       .update({ status: 'to-read' })
       .eq('status', 'reading')
       .eq('user_id', user.id)
-      .neq('id', id); // Don't update the book we're about to set to reading
-  } 
-  
+      .neq('id', id);
+  }
+
   if (status === 'finished') {
     updateData.completed_at = new Date().toISOString();
+    updateData.hidden_from_profile = false; // By default, finished books are public
   }
 
-  const { error } = await supabase
-    .from('books')
-    .update(updateData)
-    .eq('id', id)
-    .eq('user_id', user.id); // Ensure user can only update their own books
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  revalidatePath('/');
-  return { success: true };
+  return performUpdate(id, updateData);
 }
 
 export async function deleteBook(id: string) {
-  const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { success: false, error: "Not authenticated" };
 
   const { error } = await supabase
     .from('books')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id); // Ensure user can only delete their own books
+    .eq('user_id', user.id);
 
-  if (error) {
-    return { success: false, error: error.message };
-  }
+  if (error) return { success: false, error: error.message };
 
-  revalidatePath('/'); 
+  revalidatePath('/');
   return { success: true };
 }
 
 export async function updateProgress(id: string, page: number) {
-  const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  const { error } = await supabase
-    .from('books')
-    .update({ current_page: page })
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-  
-  revalidatePath('/');
-  return { success: true };
+  return performUpdate(id, { current_page: page });
 }
 
 export async function updateTotalPages(id: string, totalPages: number) {
-  const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  if (totalPages < 0) {
-    return { success: false, error: "Total pages must be a positive number" };
-  }
-
-  const { error } = await supabase
-    .from('books')
-    .update({ total_pages: totalPages })
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-  
-  revalidatePath('/');
-  return { success: true };
+  if (totalPages < 0) return { success: false, error: "Total pages must be a positive number" };
+  return performUpdate(id, { total_pages: totalPages });
 }
 
 export async function updateBookCount(id: string, newCount: number) {
-  const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
-
-  const { error } = await supabase
-    .from('books')
-    .update({ 
-      times_read: newCount,
-      status: 'to-read',
-      current_page: 0,
-      started_at: null,
-      completed_at: null
-    })
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) {
-    return { success: false, error: error.message };
-  }
-
-  revalidatePath('/');
-  return { success: true };
+  return performUpdate(id, {
+    times_read: newCount,
+    status: 'to-read',
+    current_page: 0,
+    started_at: null,
+    completed_at: null
+  });
 }
 
 export async function updateNotes(id: string, notes: string) {
-  const supabase = await createClient();
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return { success: false, error: "Not authenticated" };
-  }
+  return performUpdate(id, { notes });
+}
 
-  const { error } = await supabase
+export async function toggleBookVisibility(id: string) {
+  const { supabase, user } = await getAuthContext();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  // Get current visibility state
+  const { data: book } = await supabase
     .from('books')
-    .update({ notes })
+    .select('hidden_from_profile')
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  if (error) {
-    return { success: false, error: error.message };
-  }
-  
-  revalidatePath('/');
-  return { success: true };
+  if (!book) return { success: false, error: "Book not found" };
+
+  return performUpdate(id, { hidden_from_profile: !book.hidden_from_profile });
 }
